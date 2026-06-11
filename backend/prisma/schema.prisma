@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Car {
+  id         Int      @id @default(autoincrement())
+  model      String
+  year       Int
+  price      String
+  engine     String
+  horsepower String
+  image      String
+  tag        String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  bookings   Booking[] // NEW: Relation to bookings
+}
+
+// NEW: Booking model
+model Booking {
+  id         Int      @id @default(autoincrement())
+  carId      Int
+  car        Car      @relation(fields: [carId], references: [id])
+  customerName String
+  customerEmail String
+  customerPhone String
+  bookingDate DateTime
+  bookingTime String
+  message    String?
+  status     String   @default("pending") // pending, confirmed, cancelled
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
