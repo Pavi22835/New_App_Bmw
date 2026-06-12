@@ -1,5 +1,6 @@
 import { Car, fetchCars } from '../../services/api';
 import { getFavorites, toggleFavorite } from '../../services/favorites';
+import { addRecentCar, getCompareCars, getRecentCars, toggleCompareCar } from '../../services/appStorage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -22,6 +23,8 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [compareIds, setCompareIds] = useState<number[]>([]);
+  const [recentIds, setRecentIds] = useState<number[]>([]);
 
   const tags = ['All', 'Sport', 'Electric', 'SUV', 'Luxury', 'Convertible'];
 
@@ -43,6 +46,16 @@ export default function HomeScreen() {
     setFavorites(favs);
   };
 
+  const loadCompare = async () => {
+    const selectedIds = await getCompareCars();
+    setCompareIds(selectedIds);
+  };
+
+  const loadRecent = async () => {
+    const ids = await getRecentCars();
+    setRecentIds(ids);
+  };
+
   const handleToggleFavorite = async (carId: number) => {
     const isNowFavorite = await toggleFavorite(carId);
     if (isNowFavorite) {
@@ -55,12 +68,16 @@ export default function HomeScreen() {
   useEffect(() => {
     loadCars();
     loadFavorites();
+    loadCompare();
+    loadRecent();
   }, []);
 
   const onRefresh = () => {
     setRefreshing(true);
     loadCars();
     loadFavorites();
+    loadCompare();
+    loadRecent();
   };
 
   const filteredCars = cars.filter(car => {
@@ -70,8 +87,20 @@ export default function HomeScreen() {
     return matchesTag && matchesSearch;
   });
 
+  const recentCars = cars.filter((car) => recentIds.includes(car.id));
+
   const clearSearch = () => {
     setSearchQuery('');
+  };
+
+  const openCar = async (carId: number) => {
+    await addRecentCar(carId);
+    router.push(`/car/${carId}`);
+  };
+
+  const handleToggleCompare = async (carId: number) => {
+    const updated = await toggleCompareCar(carId);
+    setCompareIds(updated);
   };
 
   if (loading) {
@@ -136,6 +165,20 @@ export default function HomeScreen() {
         </View>
       </View>
 
+      {recentCars.length > 0 && (
+        <View style={styles.recentSection}>
+          <Text style={styles.recentTitle}>Recently Viewed</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recentScroll}>
+            {recentCars.map((car) => (
+              <TouchableOpacity key={car.id} style={styles.recentCard} onPress={() => openCar(car.id)}>
+                <Image source={{ uri: car.image }} style={styles.recentImage} />
+                <Text style={styles.recentModel}>{car.model}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagsContainer}>
         {tags.map((tag) => (
           <TouchableOpacity
@@ -173,20 +216,33 @@ export default function HomeScreen() {
             <TouchableOpacity 
               key={car.id} 
               style={styles.carCard} 
-              onPress={() => router.push(`/car/${car.id}`)}
+              onPress={() => openCar(car.id)}
             >
               <Image source={{ uri: car.image }} style={styles.carImage} />
-              <TouchableOpacity 
-                style={styles.cartButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleToggleFavorite(car.id);
-                }}
-              >
-                <Text style={styles.cartButtonText}>
-                  {favorites.includes(car.id) ? '🛒' : '📦'}
-                </Text>
-              </TouchableOpacity>
+              <View style={styles.cardActions}>
+                <TouchableOpacity 
+                  style={styles.cartButton}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleToggleFavorite(car.id);
+                  }}
+                >
+                  <Text style={styles.cartButtonText}>
+                    {favorites.includes(car.id) ? '🛒' : '📦'}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.compareButton, compareIds.includes(car.id) && styles.compareButtonActive]}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleToggleCompare(car.id);
+                  }}
+                >
+                  <Text style={[styles.compareButtonText, compareIds.includes(car.id) && styles.compareButtonTextActive]}>
+                    {compareIds.includes(car.id) ? '✓ Compare' : 'Compare'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.carInfo}>
                 <Text style={styles.carModel}>{car.model}</Text>
                 <Text style={styles.carPrice}>{car.price}</Text>
@@ -239,14 +295,25 @@ const styles = StyleSheet.create({
   noResultsText: { fontSize: 14, color: '#666', textAlign: 'center', marginBottom: 24 },
   clearSearchButton: { backgroundColor: '#0066B4', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 },
   clearSearchButtonText: { color: '#fff', fontWeight: '600' },
+  recentSection: { paddingHorizontal: 20, marginBottom: 24 },
+  recentTitle: { fontSize: 18, fontWeight: '700', color: '#333', marginBottom: 12 },
+  recentScroll: { paddingBottom: 8 },
+  recentCard: { width: 140, marginRight: 14, borderRadius: 16, overflow: 'hidden', backgroundColor: '#fff', elevation: 2, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 } },
+  recentImage: { width: '100%', height: 100 },
+  recentModel: { padding: 12, fontSize: 14, fontWeight: '700', color: '#333' },
   grid: { paddingHorizontal: 16, paddingBottom: 30 },
   carCard: { backgroundColor: '#fff', borderRadius: 16, marginBottom: 20, overflow: 'hidden', elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, position: 'relative' },
   carImage: { width: '100%', height: 200 },
-  cartButton: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 20, padding: 8, zIndex: 1 },
+  cartButton: { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 20, padding: 8, zIndex: 1, marginRight: 8 },
   cartButtonText: { fontSize: 24 },
+  cardActions: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', zIndex: 2 },
   carInfo: { padding: 16 },
   carModel: { fontSize: 18, fontWeight: 'bold', color: '#333' },
   carPrice: { fontSize: 20, fontWeight: 'bold', color: '#0066B4', marginTop: 4 },
+  compareButton: { backgroundColor: 'rgba(255,255,255,0.9)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8, justifyContent: 'center', alignItems: 'center' },
+  compareButtonActive: { backgroundColor: '#0066B4' },
+  compareButtonText: { color: '#0066B4', fontWeight: '700' },
+  compareButtonTextActive: { color: '#fff' },
   specs: { flexDirection: 'row', gap: 16, marginTop: 12, marginBottom: 16 },
   specText: { fontSize: 13, color: '#666' },
   detailsButton: { backgroundColor: '#0066B4', paddingVertical: 10, borderRadius: 8, alignItems: 'center' },
