@@ -6,11 +6,23 @@ async function main() {
   console.log('🌱 Seeding database...')
 
   try {
-    // Clear existing cars
+    // First delete all bookings (foreign key constraint)
+    await prisma.booking.deleteMany()
+    console.log('✓ Cleared existing bookings')
+
+    // Then delete all price alerts
+    await prisma.priceAlert.deleteMany()
+    console.log('✓ Cleared existing price alerts')
+
+    // Then delete all reviews
+    await prisma.review.deleteMany()
+    console.log('✓ Cleared existing reviews')
+
+    // Finally clear existing cars
     await prisma.car.deleteMany()
     console.log('✓ Cleared existing cars')
 
-    // Add new BMW cars
+    // Add new BMW cars with stable public image URLs
     const cars = [
       {
         model: 'BMW M4 Competition',
@@ -18,7 +30,7 @@ async function main() {
         price: '$82,500',
         engine: '3.0L Twin-Turbo I6',
         horsepower: '503 hp',
-        image: 'https://images.unsplash.com/photo-1617531653332-bd46c24f2068?w=400',
+        image: 'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=800',
         tag: 'Sport'
       },
       {
@@ -27,7 +39,7 @@ async function main() {
         price: '$119,300',
         engine: 'Electric (Dual Motor)',
         horsepower: '536 hp',
-        image: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?w=400',
+        image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=800',
         tag: 'Electric'
       },
       {
@@ -36,7 +48,7 @@ async function main() {
         price: '$89,600',
         engine: '4.4L V8 Twin-Turbo',
         horsepower: '523 hp',
-        image: 'https://images.unsplash.com/photo-1580273916550-e323be2ae537?w=400',
+        image: 'https://images.unsplash.com/photo-1511919884226-fd3cad34687c?w=800',
         tag: 'SUV'
       },
       {
@@ -45,7 +57,7 @@ async function main() {
         price: '$66,800',
         engine: '3.0L Twin-Turbo I6',
         horsepower: '382 hp',
-        image: 'https://images.unsplash.com/photo-1614200187524-dc4b892acf16?w=400',
+        image: 'https://images.unsplash.com/photo-1502877338535-766e1452684a?w=800',
         tag: 'Convertible'
       }
     ]
