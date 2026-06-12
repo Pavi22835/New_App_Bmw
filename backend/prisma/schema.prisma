@@ -19,6 +19,8 @@ model Car {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   bookings   Booking[] // NEW: Relation to bookings
+  priceAlerts PriceAlert[]
+  reviews    Review[]
 }
 
 // NEW: Booking model
@@ -33,6 +35,27 @@ model Booking {
   bookingTime String
   message    String?
   status     String   @default("pending") // pending, confirmed, cancelled
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model PriceAlert {
+  id          Int      @id @default(autoincrement())
+  carId       Int?
+  car         Car?     @relation(fields: [carId], references: [id])
+  label       String
+  targetPrice Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  carId      Int
+  car        Car      @relation(fields: [carId], references: [id])
+  author     String
+  rating     Int
+  comment    String
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
