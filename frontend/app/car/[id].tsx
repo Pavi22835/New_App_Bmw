@@ -1,13 +1,15 @@
 import { Car, fetchCarById } from '../../services/api';
+import { addRecentCar, isCompareCar, toggleCompareCar } from '../../services/appStorage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, Share, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function CarDetailScreen() {
   const { id } = useLocalSearchParams();
   const [car, setCar] = useState<Car | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [compareSelected, setCompareSelected] = useState(false);
 
   useEffect(() => {
     loadCar();
@@ -18,12 +20,31 @@ export default function CarDetailScreen() {
       setError(null);
       const data = await fetchCarById(Number(id));
       setCar(data);
+      await addRecentCar(data.id);
+      setCompareSelected(await isCompareCar(data.id));
     } catch (err) {
       setError('Failed to load car details');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleShare = async () => {
+    if (!car) return;
+    try {
+      await Share.share({
+        message: `Check out this BMW: ${car.model} priced at ${car.price}.`,
+      });
+    } catch (err) {
+      console.error('Share failed:', err);
+    }
+  };
+
+  const handleToggleCompare = async () => {
+    if (!car) return;
+    const updated = await toggleCompareCar(car.id);
+    setCompareSelected(updated.includes(car.id));
   };
 
   if (loading) {
@@ -78,8 +99,21 @@ export default function CarDetailScreen() {
             </View>
           </View>
 
-          {/* NEW: Book Test Drive Button */}
-          <TouchableOpacity style={styles.bookButton} onPress={() => {}}>
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.secondaryButton} onPress={handleShare}>
+              <Text style={styles.secondaryButtonText}>🔗 Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.secondaryButton, compareSelected && styles.secondaryButtonActive]}
+              onPress={handleToggleCompare}
+            >
+              <Text style={[styles.secondaryButtonText, compareSelected && styles.secondaryButtonTextActive]}>
+                {compareSelected ? '✓ Compare' : 'Compare'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.bookButton} onPress={() => router.push(`/book-car/${car.id}`)}>
             <Text style={styles.bookButtonText}>📅 Book Test Drive</Text>
           </TouchableOpacity>
         </View>
